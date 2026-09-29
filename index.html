@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FC 전환율 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f5f2; --surface:#ffffff; --surface2:#f0eee9; --line:#e2dfd8; --text:#1d1c1a; --muted:#6d6a63;
+  --accent:#c2410c; --accent-soft:#fde7dc; --baemin:#0f9d8a; --coupang:#3b5bdb;
+  --up:#15803d; --down:#b91c1c; --warn:#b45309; --input:#fffdf7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161513; --surface:#201f1c; --surface2:#2a2925; --line:#3a3833; --text:#eeebe4; --muted:#a19d94;
+    --accent:#fb923c; --accent-soft:#3b2417; --baemin:#2dd4bf; --coupang:#7c9cff;
+    --up:#4ade80; --down:#f87171; --warn:#fbbf24; --input:#26251f;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161513; --surface:#201f1c; --surface2:#2a2925; --line:#3a3833; --text:#eeebe4; --muted:#a19d94;
+  --accent:#fb923c; --accent-soft:#3b2417; --baemin:#2dd4bf; --coupang:#7c9cff;
+  --up:#4ade80; --down:#f87171; --warn:#fbbf24; --input:#26251f;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Noto Sans KR",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+h1{font-size:22px;margin:0;letter-spacing:-.02em}
+h1 small{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
+h2{font-size:15px;margin:0 0 10px}
+.tabs{display:flex;gap:4px;background:var(--surface2);padding:4px;border-radius:10px;flex-wrap:wrap}
+.tabs button{border:0;background:none;color:var(--muted);padding:7px 14px;border-radius:7px;font:inherit;font-weight:500;cursor:pointer}
+.tabs button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+select,input,button.btn{font:inherit;color:var(--text)}
+select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+button.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.btn:hover{border-color:var(--muted)}
+button.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:7px 12px;font:inherit;cursor:pointer;color:var(--muted)}
+.seg button.on{color:#fff}
+.seg button.on[data-p="배달의민족"]{background:var(--baemin)}
+.seg button.on[data-p="쿠팡이츠"]{background:var(--coupang)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;white-space:nowrap}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right}
+th{font-size:12px;color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--surface)}
+th.grp-in{border-bottom:2px solid var(--accent)}
+th.grp-out{border-bottom:2px solid var(--muted)}
+td:first-child,th:first-child{text-align:left}
+td.calc{background:var(--surface2)}
+td input{width:100%;min-width:74px;text-align:right;border:1px solid transparent;background:var(--input);border-radius:5px;padding:4px 6px;font-variant-numeric:tabular-nums}
+td input:focus{outline:none;border-color:var(--accent)}
+td input.note{text-align:left;min-width:160px}
+td.edited input{border-color:var(--warn)}
+tr.empty td{color:var(--muted)}
+th.sortable{cursor:pointer}
+th.sortable:hover{color:var(--text)}
+th.sorted{color:var(--accent)}
+.best{color:var(--up);font-weight:700}
+.worst{color:var(--down)}
+.avgrow td{font-weight:700;background:var(--surface2)}
+.chartbox{position:relative}
+.chartbox svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tip{position:absolute;pointer-events:none;background:var(--text);color:var(--bg);font-size:12px;padding:6px 8px;border-radius:6px;white-space:nowrap;opacity:0;transition:opacity .1s}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+.sim label{display:block;font-size:12px;color:var(--muted);margin:10px 0 3px}
+.sim .row{display:flex;gap:8px;align-items:center}
+.sim input[type=range]{flex:1;accent-color:var(--accent)}
+.sim input[type=number]{width:110px;border:1px solid var(--line);background:var(--input);border-radius:6px;padding:5px 8px;text-align:right}
+.res{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:6px 14px;font-variant-numeric:tabular-nums;align-items:baseline}
+.res .h{font-size:12px;color:var(--muted)}
+.res .n{text-align:right}
+.res .big{font-weight:700;font-size:16px}
+.funnel{display:flex;align-items:stretch;gap:0;margin:6px 0 4px;flex-wrap:wrap}
+.fstep{flex:1;min-width:100px;padding:10px 12px;background:var(--surface2);border-radius:8px;text-align:center}
+.fstep b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.fstep span{font-size:12px;color:var(--muted)}
+.farrow{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 6px;font-size:12px;color:var(--accent);font-weight:700;min-width:62px}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--accent-soft);color:var(--accent);margin-left:6px;vertical-align:1px}
+footer{font-size:12px;color:var(--muted);margin-top:18px}
+[hidden]{display:none!important}
+@media print{
+  body{background:#fff} .noprint,.tabs,.bar button.btn{display:none!important}
+  .card,.kpi{break-inside:avoid;border-color:#ccc}
+  td input{border:0;background:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>서오릉피자 FC 전환율 계산기<small id="meta"></small></h1>
+    <div class="tabs noprint" id="viewTabs">
+      <button data-v="store" class="on">매장추이</button>
+      <button data-v="compare" id="tabCompare">매장 비교</button>
+      <button data-v="sim">개선 시뮬레이터</button>
+    </div>
+  </header>
+
+  <div class="bar">
+    <select id="storeSel" aria-label="매장"></select>
+    <span class="noprint" id="storeTools">
+      <button class="btn" id="btnStoreAdd">+ 매장 추가</button>
+      <button class="btn" id="btnStoreRen">이름 변경</button>
+      <button class="btn" id="btnStoreDel">매장 삭제</button>
+    </span>
+    <div class="seg" id="platSeg">
+      <button data-p="배달의민족" class="on">배달의민족</button>
+      <button data-p="쿠팡이츠">쿠팡이츠</button>
+    </div>
+    <select id="monthSel" aria-label="기준월" hidden></select>
+    <span style="flex:1"></span>
+    <button class="btn noprint" id="btnCsv">CSV 내보내기</button>
+    <button class="btn noprint" id="btnPrint">인쇄</button>
+    <button class="btn noprint" id="btnBackup" title="입력한 매장·월별 값을 파일로 저장합니다">백업 저장</button>
+    <button class="btn noprint" id="btnRestore" title="백업 파일(.json)을 불러옵니다">백업 불러오기</button>
+    <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+  </div>
+
+  <!-- 매장 없음 -->
+  <section id="v-empty" hidden>
+    <div class="card" style="max-width:520px;margin:40px auto;text-align:center;padding:32px 24px">
+      <h2 style="font-size:18px">등록된 매장이 없습니다</h2>
+      <p class="muted" style="margin:0 0 16px">매장명을 입력하고 추가하면 월별 노출·클릭·주문·금액·광고비를 기록할 수 있습니다.</p>
+      <form id="firstStoreForm" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <input id="firstStoreName" style="border:1px solid var(--line);background:var(--input);border-radius:8px;padding:8px 12px;min-width:200px">
+        <button class="btn primary" type="submit">매장 추가</button>
+      </form>
+      <p class="hint">백업 파일이 있다면 위의 「백업 불러오기」로 한 번에 복원할 수 있습니다.</p>
+    </div>
+  </section>
+
+  <!-- 매장별 추이 -->
+  <section id="v-store">
+    <div class="kpis" id="kpis"></div>
+    <div class="card">
+      <div class="bar" style="margin-bottom:6px">
+        <h2 style="margin:0">월별 추이</h2>
+        <select id="chartMetric" aria-label="지표"></select>
+      </div>
+      <div class="legend"><span><i style="background:var(--baemin)"></i>배달의민족</span><span><i style="background:var(--coupang)"></i>쿠팡이츠</span></div>
+      <div class="chartbox" id="chart"><div class="tip" id="tip"></div></div>
+    </div>
+    <div class="card">
+      <div class="bar" style="margin-bottom:8px">
+        <h2 style="margin:0" id="tblTitle">월별 원장</h2>
+        <span style="flex:1"></span>
+        <input type="month" id="addMonthVal" class="noprint" aria-label="추가할 월" style="border:1px solid var(--line);background:var(--input);border-radius:8px;padding:6px 8px">
+        <button class="btn noprint" id="btnAddMonth">+ 월 추가</button>
+      </div>
+      <div class="tblwrap"><table id="ledger"></table></div>
+      <p class="hint">흰 칸(노출·클릭·주문·금액·광고비·비고)에 입력하면 회색 칸 지표가 자동 계산됩니다. 입력값은 이 브라우저에 자동 저장되니, 다른 PC로 옮기거나 보관하려면 「백업 저장」을 눌러 두세요.</p>
+    </div>
+  </section>
+
+  <!-- 매장 비교 -->
+  <section id="v-compare" hidden>
+    <div class="card">
+      <h2 id="cmpTitle"></h2>
+      <div class="tblwrap"><table id="cmp"></table></div>
+      <p class="hint">열 제목을 누르면 정렬됩니다. 초록 = 가장 좋은 값, 빨강 = 가장 나쁜 값(광고비 관련 지표는 낮을수록 좋음). 데이터가 없는 매장은 아래에 회색으로 표시됩니다.</p>
+    </div>
+  </section>
+
+  <!-- 시뮬레이터 -->
+  <section id="v-sim" hidden>
+    <div class="grid2">
+      <div class="card sim">
+        <h2>기준값 <span class="pill" id="simBase"></span></h2>
+        <div class="funnel" id="simFunnelBase"></div>
+        <label>노출수 변화</label>
+        <div class="row"><input type="range" id="sImpR" min="-50" max="100" step="1"><input type="number" id="sImp" step="1"> %</div>
+        <label>클릭률 (클릭 ÷ 노출)</label>
+        <div class="row"><input type="range" id="sCtrR" min="0.5" max="10" step="0.05"><input type="number" id="sCtr" step="0.01"> %</div>
+        <label>전환율 (주문 ÷ 클릭)</label>
+        <div class="row"><input type="range" id="sCvrR" min="5" max="50" step="0.1"><input type="number" id="sCvr" step="0.1"> %</div>
+        <label>객단가</label>
+        <div class="row"><input type="range" id="sAovR" min="15000" max="50000" step="100"><input type="number" id="sAov" step="100"> 원</div>
+        <label>광고비 (월)</label>
+        <div class="row"><input type="range" id="sAdR" min="0" max="8000000" step="10000"><input type="number" id="sAd" step="10000"> 원</div>
+        <div style="margin-top:12px"><button class="btn" id="simReset">기준값으로</button></div>
+      </div>
+      <div class="card">
+        <h2>예상 결과</h2>
+        <div class="funnel" id="simFunnel"></div>
+        <div class="res" id="simRes" style="margin-top:14px"></div>
+        <p class="hint" id="simNote"></p>
+      </div>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const MODE = /*__MODE__*/'owner';   // 'owner' = 점주 배포용, 'hq' = 본사 관리용
+const SEED = /*__SEED__*/null;
+const PLATS = ['배달의민족','쿠팡이츠'];
+const LS_KEY = MODE==='hq' ? 'fcconv.hq.db.v1' : 'fcconv.db.v2';
+
+// ---------- 저장소: {stores:[{name, rows:[{p,ym,F,G,H,I,J,K}]}]} ----------
+let db = { stores: [] };
+let hasSaved = false;
+try { const s = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); if (s && Array.isArray(s.stores)) { db = s; hasSaved = true; } } catch(e) {}
+if (!hasSaved && SEED) db = JSON.parse(JSON.stringify(SEED));
+let saveWarned=false;
+function saveDb(){ try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch(e) { if(saveWarned) return; saveWarned=true; alert('브라우저 저장소에 저장하지 못했습니다. 「백업 저장」으로 파일을 받아 두세요.'); } }
+let stores = [];
+function syncStores(){ stores = db.stores.map(s=>s.name); }
+syncStores();
+const storeObj = name => db.stores.find(s=>s.name===name);
+
+// ---------- 데이터 ----------
+function rowsOf(store, plat){
+  return ((storeObj(store)||{rows:[]}).rows).filter(r=>r.p===plat).sort((a,b)=>a.ym<b.ym?-1:1);
+}
+const div = (a,b) => (a==null||b==null||!b) ? null : a/b;
+function calc(r){
+  return {
+    ctr: div(r.G, r.F), cvr: div(r.H, r.G), aov: div(r.I, r.H),
+    cpc: div(r.J, r.G), cpo: div(r.J, r.H), adr: div(r.J, r.I), roas: div(r.I, r.J)
+  };
+}
+const hasData = r => r.H!=null || r.I!=null || r.G!=null;
+
+// ---------- 포맷 ----------
+const nf = new Intl.NumberFormat('ko-KR');
+const fmt = {
+  int: v => v==null ? '–' : nf.format(Math.round(v)),
+  won: v => v==null ? '–' : nf.format(Math.round(v)),
+  pct: (v,d=2) => v==null ? '–' : (v*100).toFixed(d)+'%',
+  x:   v => v==null ? '–' : (v*100).toFixed(0)+'%',
+};
+const ymLabel = ym => { const [y,m]=ym.split('-'); return `${y.slice(2)}.${m}`; };
+
+const METRICS = [
+  {k:'cvr', label:'전환율', f:v=>fmt.pct(v), good:'up', desc:'주문 ÷ 클릭'},
+  {k:'ctr', label:'클릭률', f:v=>fmt.pct(v), good:'up', desc:'클릭 ÷ 노출'},
+  {k:'aov', label:'객단가', f:v=>fmt.won(v)+'원', good:'up', desc:'금액 ÷ 주문'},
+  {k:'H',   label:'주문수', f:v=>fmt.int(v)+'건', good:'up', raw:true},
+  {k:'I',   label:'주문금액', f:v=>fmt.won(v)+'원', good:'up', raw:true},
+  {k:'cpo', label:'주문당 광고비', f:v=>fmt.won(v)+'원', good:'down', desc:'광고비 ÷ 주문'},
+  {k:'adr', label:'광고비 비율', f:v=>fmt.pct(v,1), good:'down', desc:'광고비 ÷ 금액'},
+  {k:'roas',label:'ROAS', f:v=>fmt.x(v), good:'up', desc:'금액 ÷ 광고비'},
+  {k:'cpc', label:'클릭당 광고비', f:v=>fmt.won(v)+'원', good:'down', desc:'광고비 ÷ 클릭'},
+  {k:'F',   label:'노출수', f:v=>fmt.int(v), good:'up', raw:true},
+  {k:'G',   label:'클릭수', f:v=>fmt.int(v), good:'up', raw:true},
+];
+const mv = (r,m) => m.raw ? r[m.k] : calc(r)[m.k];
+
+// ---------- 상태 ----------
+let state = { view:'store', store: stores[0], plat:'배달의민족', metric:'cvr', month:null, sortK:'cvr', sortDir:-1 };
+try { Object.assign(state, JSON.parse(localStorage.getItem('fcconv.ui.'+MODE)||'{}')); } catch(e){}
+if (!stores.includes(state.store)) state.store = stores[0];
+function saveUi(){ try{ localStorage.setItem('fcconv.ui.'+MODE, JSON.stringify({view:state.view,store:state.store,plat:state.plat,metric:state.metric})); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+if (MODE === 'hq') {
+  document.title = 'FC 전환율 계산기 (본사 관리용)';
+  document.querySelector('h1').firstChild.textContent = '서오릉피자 FC 전환율 계산기 · 본사 관리용';
+} else {
+  $('tabCompare').remove();
+  if (state.view === 'compare') state.view = 'store';
+}
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function fillStoreSel(){ $('storeSel').innerHTML = stores.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join(''); }
+fillStoreSel();
+$('chartMetric').innerHTML = METRICS.map(m=>`<option value="${m.k}">${m.label}</option>`).join('');
+$('meta').textContent = '배민·쿠팡이츠 노출 → 클릭 → 주문 퍼널 기록';
+
+// ---------- 매장 관리 ----------
+function cleanName(n){ return (n||'').trim().replace(/\s+/g,' ').replace(/^서오릉피자\s*/,''); }
+function addStore(raw){
+  const n = cleanName(raw);
+  if (!n) return false;
+  if (stores.includes(n)) { alert(`「${n}」은(는) 이미 있습니다.`); return false; }
+  db.stores.push({name:n, rows:[]}); saveDb(); syncStores(); fillStoreSel();
+  state.store = n; if (state.view==='compare') state.view='store'; render(); return true;
+}
+$('btnStoreAdd').onclick = ()=>{ const n = prompt('추가할 매장명을 입력하세요'); if (n!=null) addStore(n); };
+$('firstStoreForm').onsubmit = e=>{ e.preventDefault(); if (addStore($('firstStoreName').value)) $('firstStoreName').value=''; };
+$('btnStoreRen').onclick = ()=>{
+  const s = storeObj(state.store); if(!s) return;
+  const n = cleanName(prompt('새 매장명', s.name)||''); if(!n || n===s.name) return;
+  if (stores.includes(n)) { alert(`「${n}」은(는) 이미 있습니다.`); return; }
+  s.name = n; saveDb(); syncStores(); fillStoreSel(); state.store = n; render();
+};
+$('btnStoreDel').onclick = ()=>{
+  const s = storeObj(state.store); if(!s) return;
+  const cnt = s.rows.filter(hasData).length;
+  if (!confirm(`「${s.name}」 매장을 삭제할까요?${cnt?`\n입력된 ${cnt}개 월 기록도 함께 지워집니다.`:''}`)) return;
+  db.stores = db.stores.filter(x=>x!==s); saveDb(); syncStores(); fillStoreSel();
+  state.store = stores[0]; render();
+};
+
+// ---------- 매장별 ----------
+function renderKpis(){
+  const rows = rowsOf(state.store, state.plat).filter(hasData);
+  const el = $('kpis');
+  if (!rows.length){ el.innerHTML = `<div class="kpi"><div class="l">${state.plat}</div><div class="v muted">데이터 없음</div></div>`; return; }
+  const last = rows[rows.length-1], prev = rows[rows.length-2];
+  const show = ['cvr','ctr','aov','H','I','cpo','adr','roas'];
+  el.innerHTML = show.map(k=>{
+    const m = METRICS.find(x=>x.k===k);
+    const v = mv(last,m), pv = prev ? mv(prev,m) : null;
+    let d = '<span class="muted">전월 없음</span>';
+    if (v!=null && pv!=null && pv!==0){
+      const pctMetric = ['cvr','ctr','adr','roas'].includes(k);
+      const diff = pctMetric ? (v-pv)*100 : (v-pv)/Math.abs(pv)*100;
+      const good = (diff>0) === (m.good==='up');
+      const cls = Math.abs(diff)<0.005 ? 'muted' : good ? 'up':'down';
+      const unit = pctMetric ? '%p' : '%';
+      d = `<span class="${cls}">${diff>=0?'▲':'▼'} ${Math.abs(diff).toFixed(pctMetric&&k!=='roas'?2:1)}${unit}</span> <span class="muted">전월 대비</span>`;
+    } else if (v==null) d = '<span class="muted">해당 값 없음</span>';
+    return `<div class="kpi"><div class="l">${m.label} · ${ymLabel(last.ym)}</div><div class="v">${m.f(v)}</div><div class="d">${d}</div></div>`;
+  }).join('');
+}
+
+function renderChart(){
+  const m = METRICS.find(x=>x.k===state.metric);
+  const series = PLATS.map(p=>({p, pts: rowsOf(state.store,p).filter(hasData).map(r=>({ym:r.ym, v:mv(r,m)})).filter(o=>o.v!=null)}));
+  const yms = [...new Set(series.flatMap(s=>s.pts.map(o=>o.ym)))].sort();
+  const box = $('chart');
+  box.querySelectorAll('svg,.empty').forEach(n=>n.remove());
+  if (!yms.length){ box.insertAdjacentHTML('beforeend','<p class="empty muted">표시할 데이터가 없습니다.</p>'); return; }
+  const W=900,H=260,L=64,R=16,T=14,B=30;
+  const vals = series.flatMap(s=>s.pts.map(o=>o.v));
+  let lo=Math.min(...vals), hi=Math.max(...vals); if(lo===hi){lo*=.9;hi=hi*1.1||1;}
+  const pad=(hi-lo)*.12; lo=Math.max(0,lo-pad); hi+=pad;
+  const x = i => yms.length===1 ? (L+W-R)/2 : L + i*(W-L-R)/(yms.length-1);
+  const y = v => T + (1-(v-lo)/(hi-lo))*(H-T-B);
+  const ticks = 4; let g='';
+  for(let i=0;i<=ticks;i++){ const v=lo+(hi-lo)*i/ticks, yy=y(v);
+    g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${m.f(v).replace(/원|건/,'')}</text>`; }
+  yms.forEach((ym,i)=>{ g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${ymLabel(ym)}</text>`; });
+  const col = {'배달의민족':'var(--baemin)','쿠팡이츠':'var(--coupang)'};
+  series.forEach(s=>{
+    if(!s.pts.length) return;
+    const d = s.pts.map((o,j)=>`${j?'L':'M'}${x(yms.indexOf(o.ym))},${y(o.v)}`).join('');
+    g+=`<path d="${d}" fill="none" stroke="${col[s.p]}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    s.pts.forEach(o=>{ g+=`<circle cx="${x(yms.indexOf(o.ym))}" cy="${y(o.v)}" r="3.5" fill="var(--surface)" stroke="${col[s.p]}" stroke-width="2"/>`; });
+  });
+  yms.forEach((ym,i)=>{ const w=(W-L-R)/Math.max(1,yms.length-1); g+=`<rect class="hit" data-i="${i}" x="${x(i)-w/2}" y="${T}" width="${w}" height="${H-T-B}" fill="transparent"/>`; });
+  box.insertAdjacentHTML('beforeend', `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${m.label} 월별 추이">${g}</svg>`);
+  const tip=$('tip'), svg=box.querySelector('svg');
+  svg.querySelectorAll('.hit').forEach(h=>{
+    h.addEventListener('mousemove',ev=>{
+      const ym=yms[+h.dataset.i];
+      tip.innerHTML = `<b>${ymLabel(ym)}</b><br>`+series.map(s=>{const o=s.pts.find(p=>p.ym===ym);return `${s.p}: ${o?m.f(o.v):'–'}`;}).join('<br>');
+      const r=box.getBoundingClientRect(); let lx=ev.clientX-r.left+12; if(lx>r.width-170) lx-=190;
+      tip.style.left=lx+'px'; tip.style.top=(ev.clientY-r.top-10)+'px'; tip.style.opacity=1;
+    });
+    h.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  });
+}
+
+const IN_COLS = [['F','노출수'],['G','클릭수'],['H','주문수'],['I','주문금액'],['J','광고비']];
+const OUT_COLS = [['ctr','클릭률',v=>fmt.pct(v)],['cvr','전환율',v=>fmt.pct(v)],['aov','객단가',fmt.won],['cpc','클릭당 광고비',fmt.won],['cpo','주문당 광고비',fmt.won],['adr','광고비 비율',v=>fmt.pct(v,1)],['roas','ROAS',fmt.x]];
+
+function renderLedger(){
+  const rows = rowsOf(state.store, state.plat);
+  $('tblTitle').innerHTML = `월별 원장 <span class="pill">${esc(state.store)} · ${state.plat}</span>`;
+  if (!$('addMonthVal').value || rows.some(r=>r.ym===$('addMonthVal').value)) $('addMonthVal').value = nextYm();
+  let h = `<thead><tr><th>월</th>${IN_COLS.map(c=>`<th class="grp-in">${c[1]}</th>`).join('')}${OUT_COLS.map(c=>`<th class="grp-out">${c[1]}</th>`).join('')}<th class="grp-in" style="text-align:left">비고</th><th class="noprint"></th></tr></thead><tbody>`;
+  const tot = {F:0,G:0,H:0,I:0,J:0};
+  if (!rows.length) h += `<tr class="empty"><td colspan="${2+IN_COLS.length+OUT_COLS.length}" style="text-align:center;padding:18px">아직 기록이 없습니다. 오른쪽 위에서 월을 고르고 「+ 월 추가」를 누르세요.</td><td></td></tr>`;
+  rows.forEach(r=>{
+    const c = calc(r);
+    h += `<tr class="${hasData(r)?'':'empty'}" data-ym="${r.ym}"><td>${ymLabel(r.ym)}</td>`;
+    IN_COLS.forEach(([k])=>{ if(r[k]!=null) tot[k]+=r[k];
+      h += `<td><input inputmode="numeric" data-k="${k}" value="${r[k]==null?'':nf.format(r[k])}"></td>`; });
+    OUT_COLS.forEach(([k,,f])=>{ h += `<td class="calc">${f(c[k])}</td>`; });
+    h += `<td><input class="note" data-k="K" value="${esc((r.K||'').replace(/\n/g,' '))}"></td><td class="noprint"><button class="btn delrow" title="이 달 삭제" style="padding:2px 9px">×</button></td></tr>`;
+  });
+  const tc = calc(tot);
+  h += `</tbody><tfoot><tr class="avgrow"><td>합계</td>${IN_COLS.map(([k])=>`<td>${fmt.int(tot[k]||null)}</td>`).join('')}${OUT_COLS.map(([k,,f])=>`<td>${f(tc[k])}</td>`).join('')}<td></td><td class="noprint"></td></tr></tfoot>`;
+  $('ledger').innerHTML = h;
+}
+
+$('ledger').addEventListener('change', ev=>{
+  const inp = ev.target; if(!inp.dataset.k) return;
+  const ym = inp.closest('tr').dataset.ym, k = inp.dataset.k;
+  const row = storeObj(state.store).rows.find(r=>r.p===state.plat && r.ym===ym);
+  if (!row) return;
+  if (k==='K') row.K = inp.value.trim();
+  else { const s = inp.value.replace(/[^\d.\-]/g,''); let v = s==='' ? null : Number(s); if (v!=null && isNaN(v)) v=null; row[k] = v; }
+  saveDb(); render();
+});
+$('ledger').addEventListener('click', ev=>{
+  const b = ev.target.closest('button.delrow'); if(!b) return;
+  const ym = b.closest('tr').dataset.ym, s = storeObj(state.store);
+  const row = s.rows.find(r=>r.p===state.plat && r.ym===ym);
+  if (row && hasData(row) && !confirm(`${ymLabel(ym)} 기록을 삭제할까요?`)) return;
+  s.rows = s.rows.filter(r=>r!==row); saveDb(); render();
+});
+
+function nextYm(){
+  const rows = rowsOf(state.store,state.plat);
+  if (rows.length){ let [y,m]=rows[rows.length-1].ym.split('-').map(Number); m++; if(m>12){m=1;y++;} return `${y}-${String(m).padStart(2,'0')}`; }
+  const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+$('btnAddMonth').onclick = ()=>{
+  const s = storeObj(state.store); if(!s) return;
+  const ym = $('addMonthVal').value || nextYm();
+  if (s.rows.some(r=>r.p===state.plat && r.ym===ym)) { alert(`${ymLabel(ym)}은(는) 이미 있습니다.`); return; }
+  s.rows.push({p:state.plat, ym, F:null,G:null,H:null,I:null,J:null,K:''}); saveDb(); render();
+  const inp = document.querySelector(`#ledger tr[data-ym="${ym}"] input[data-k="F"]`); if (inp) inp.focus();
+};
+
+function renderStore(){ renderKpis(); renderChart(); renderLedger(); }
+
+// ---------- 매장 비교 ----------
+function allMonths(){ return [...new Set(stores.flatMap(s=>rowsOf(s,state.plat).filter(hasData).map(r=>r.ym)))].sort(); }
+function renderCompare(){
+  const months = allMonths();
+  const ms = $('monthSel');
+  if (!state.month || !months.includes(state.month)) state.month = months[months.length-1];
+  ms.innerHTML = months.slice().reverse().map(m=>`<option value="${m}" ${m===state.month?'selected':''}>${ymLabel(m)}월 기준</option>`).join('');
+  $('cmpTitle').innerHTML = `${state.plat} 매장 비교 <span class="pill">${state.month?ymLabel(state.month):''}</span>`;
+  const cols = ['cvr','ctr','aov','H','I','J','cpo','adr','roas'].map(k=>k==='J'?{k:'J',label:'광고비',f:v=>fmt.won(v)+'원',good:null,raw:true}:METRICS.find(m=>m.k===k));
+  const list = stores.map(s=>{ const r = rowsOf(s,state.plat).find(r=>r.ym===state.month); return {s, r}; });
+  const withD = list.filter(o=>o.r && hasData(o.r)), without = list.filter(o=>!(o.r && hasData(o.r)));
+  const sm = cols.find(c=>c.k===state.sortK) || cols[0];
+  withD.sort((a,b)=>{ const va=mv(a.r,sm), vb=mv(b.r,sm); if(va==null) return 1; if(vb==null) return -1; return (va-vb)*state.sortDir; });
+  const ext = {};
+  cols.forEach(c=>{ const vs = withD.map(o=>mv(o.r,c)).filter(v=>v!=null && !(c.k!=='cvr'&&c.k!=='ctr'&&c.k!=='aov'&&c.k!=='H'&&c.k!=='I'&&v===0)); if(vs.length>1) ext[c.k]={max:Math.max(...vs),min:Math.min(...vs)}; });
+  let h = `<thead><tr><th>순위</th><th style="text-align:left">매장</th>${cols.map(c=>`<th class="sortable ${c.k===state.sortK?'sorted':''}" data-k="${c.k}">${c.label}${c.k===state.sortK?(state.sortDir<0?' ↓':' ↑'):''}</th>`).join('')}</tr></thead><tbody>`;
+  const sum={F:0,G:0,H:0,I:0,J:0};
+  withD.forEach((o,i)=>{
+    ['F','G','H','I','J'].forEach(k=>{ if(o.r[k]!=null) sum[k]+=o.r[k]; });
+    h += `<tr><td>${i+1}</td><td style="text-align:left">${esc(o.s)}</td>${cols.map(c=>{ const v=mv(o.r,c), e=ext[c.k]; let cls='';
+      if(e && v!=null && c.good){ const best = c.good==='up'?e.max:e.min, worst = c.good==='up'?e.min:e.max; if(v===best) cls='best'; else if(v===worst) cls='worst'; }
+      return `<td class="${cls}">${c.f(v)}</td>`; }).join('')}</tr>`;
+  });
+  const sc = calc(sum);
+  h += `<tr class="avgrow"><td></td><td style="text-align:left">전체(가중)</td>${cols.map(c=>{ const v = c.raw ? (sum[c.k]||null) : sc[c.k]; return `<td>${c.f(v)}</td>`; }).join('')}</tr>`;
+  without.forEach(o=>{ h += `<tr class="empty"><td></td><td style="text-align:left">${esc(o.s)}</td><td colspan="${cols.length}" style="text-align:left">해당 월 데이터 없음</td></tr>`; });
+  $('cmp').innerHTML = h + '</tbody>';
+}
+$('cmp').addEventListener('click', ev=>{
+  const th = ev.target.closest('th.sortable'); if(!th) return;
+  if (state.sortK===th.dataset.k) state.sortDir*=-1; else { state.sortK=th.dataset.k; state.sortDir=-1; }
+  renderCompare();
+});
+$('monthSel').onchange = e=>{ state.month=e.target.value; renderCompare(); };
+
+// ---------- 시뮬레이터 ----------
+let simBase = null;
+function pairs(){ return [['sImp','sImpR'],['sCtr','sCtrR'],['sCvr','sCvrR'],['sAov','sAovR'],['sAd','sAdR']]; }
+let simInit={}, simExact={};
+function setSim(v, exact){ const m={sImp:v.imp,sCtr:v.ctr,sCvr:v.cvr,sAov:v.aov,sAd:v.ad}; simInit={...m}; simExact=exact||{}; pairs().forEach(([n,r])=>{ $(n).value=m[n]; $(r).value=m[n]; }); }
+function loadSimBase(){
+  const rows = rowsOf(state.store,state.plat).filter(r=>r.F!=null && r.G!=null && r.H!=null && r.I!=null);
+  const r = rows[rows.length-1];
+  if (!r){ simBase=null; $('simBase').textContent='노출·클릭 데이터 없음'; $('simFunnelBase').innerHTML='<p class="muted">이 매장·플랫폼은 노출/클릭 데이터가 없어 기본값(가상)으로 계산합니다.</p>';
+    simBase = {F:40000,G:1600,H:400,I:12400000,J:0,ym:null,virtual:true}; }
+  else { simBase = {...r}; $('simBase').textContent = `${state.store} · ${state.plat} · ${ymLabel(r.ym)}`; }
+  const c = calc(simBase);
+  if (!simBase.virtual) $('simFunnelBase').innerHTML = funnelHtml(simBase.F,simBase.G,simBase.H,simBase.I,c.ctr,c.cvr);
+  const adMax = Math.max(8000000, (simBase.J||0)*2); $('sAdR').max = adMax;
+  setSim({imp:0, ctr:+(c.ctr*100).toFixed(2), cvr:+(c.cvr*100).toFixed(1), aov:Math.round(c.aov/100)*100, ad:simBase.J||0}, {sCtr:c.ctr*100, sCvr:c.cvr*100, sAov:c.aov});
+  renderSim();
+}
+function funnelHtml(F,G,H,I,ctr,cvr){
+  return `<div class="fstep"><b>${fmt.int(F)}</b><span>노출</span></div><div class="farrow">${fmt.pct(ctr)}<span class="muted">→</span></div><div class="fstep"><b>${fmt.int(G)}</b><span>클릭</span></div><div class="farrow">${fmt.pct(cvr,1)}<span class="muted">→</span></div><div class="fstep"><b>${fmt.int(H)}</b><span>주문</span></div><div class="fstep" style="margin-left:6px"><b>${(I/10000).toFixed(0)}만</b><span>매출</span></div>`;
+}
+function renderSim(){
+  if(!simBase) return;
+  const val = n => (+$(n).value===+simInit[n] && simExact[n]!=null) ? simExact[n] : (+$(n).value||0);
+  const imp=val('sImp'), ctr=val('sCtr')/100, cvr=val('sCvr')/100, aov=val('sAov'), ad=+$('sAd').value||0;
+  const F = simBase.F*(1+imp/100), G = F*ctr, H = G*cvr, I = H*aov;
+  $('simFunnel').innerHTML = funnelHtml(F,G,H,I,ctr,cvr);
+  const b = simBase, bc = calc(b);
+  const rowsR = [
+    ['주문수', b.H, H, fmt.int, '건'],
+    ['주문금액', b.I, I, fmt.won, '원'],
+    ['광고비', b.J||0, ad, fmt.won, '원'],
+    ['광고비 비율', bc.adr, ad?ad/I:null, v=>fmt.pct(v,1), ''],
+    ['ROAS', bc.roas, ad?I/ad:null, fmt.x, ''],
+    ['주문당 광고비', bc.cpo, ad?ad/H:null, fmt.won, '원'],
+  ];
+  let h = `<div class="h">항목</div><div class="h n">기준</div><div class="h n">예상</div><div class="h n">차이</div>`;
+  rowsR.forEach(([l,a,v,f,u],i)=>{
+    let d='–', cls='muted';
+    if(a!=null && v!=null){ const df=v-a; const isPct = l==='광고비 비율'||l==='ROAS';
+      d = (df>=0?'+':'−') + (isPct ? (Math.abs(df)*100).toFixed(1)+'%p' : f(Math.abs(df))+u);
+      const goodUp = !['광고비','광고비 비율','주문당 광고비'].includes(l); cls = Math.abs(df)<1e-9?'muted':((df>0)===goodUp?'up':'down'); }
+    h += `<div>${l}</div><div class="n muted">${f(a)}${a!=null?u:''}</div><div class="n ${i<2?'big':''}">${f(v)}${v!=null?u:''}</div><div class="n ${cls}">${d}</div>`;
+  });
+  $('simRes').innerHTML = h;
+  const addSales = I - b.I;
+  $('simNote').textContent = b.virtual ? '가상 기준값입니다. 실제 노출·클릭 데이터가 있는 매장을 고르면 그 매장 최근 월이 기준이 됩니다.'
+    : `전환율 1%p = 이 매장 기준 월 약 ${fmt.int(G*0.01)}건 · ${fmt.won(G*0.01*aov)}원 차이 (현재 클릭 ${fmt.int(G)}회 가정). 월 매출 변화 ${addSales>=0?'+':'−'}${fmt.won(Math.abs(addSales))}원.`;
+}
+pairs().forEach(([n,r])=>{
+  $(r).addEventListener('input',()=>{ $(n).value=$(r).value; renderSim(); });
+  $(n).addEventListener('input',()=>{ $(r).value=$(n).value; renderSim(); });
+});
+$('simReset').onclick = loadSimBase;
+
+// ---------- 공통 ----------
+function render(){
+  $('storeSel').value = state.store;
+  document.querySelectorAll('#platSeg button').forEach(b=>b.classList.toggle('on', b.dataset.p===state.plat));
+  document.querySelectorAll('#viewTabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===state.view));
+  const none = !stores.length;
+  if (!none && !stores.includes(state.store)) state.store = stores[0];
+  $('storeSel').value = state.store;
+  $('v-empty').hidden = !none;
+  $('viewTabs').hidden = none;
+  $('platSeg').hidden = none;
+  ['store','compare','sim'].forEach(v=>$('v-'+v).hidden = none || v!==state.view);
+  $('storeSel').hidden = none || state.view==='compare';
+  ['btnStoreRen','btnStoreDel'].forEach(id=>$(id).hidden = none || state.view==='compare');
+  $('btnStoreAdd').hidden = none;
+  $('btnCsv').hidden = $('btnPrint').hidden = $('btnBackup').hidden = none;
+  $('monthSel').hidden = none || state.view!=='compare';
+  $('chartMetric').value = state.metric;
+  if (none) { saveUi(); return; }
+  if (state.view==='store') renderStore();
+  if (state.view==='compare') renderCompare();
+  if (state.view==='sim') loadSimBase();
+  saveUi();
+}
+$('storeSel').onchange = e=>{ state.store=e.target.value; render(); };
+$('platSeg').onclick = e=>{ const b=e.target.closest('button'); if(!b) return; state.plat=b.dataset.p; render(); };
+$('viewTabs').onclick = e=>{ const b=e.target.closest('button'); if(!b) return; state.view=b.dataset.v; render(); };
+$('chartMetric').onchange = e=>{ state.metric=e.target.value; saveUi(); renderChart(); };
+$('btnPrint').onclick = ()=>window.print();
+function download(name, text, type){
+  const blob = new Blob([text],{type}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+$('btnBackup').onclick = ()=>{
+  const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  download(`FC_전환율_백업_${stamp}.json`, JSON.stringify({app:'fcconv', v:2, saved:d.toISOString(), ...db}, null, 1), 'application/json');
+};
+$('btnRestore').onclick = ()=>$('restoreFile').click();
+$('restoreFile').onchange = async e=>{
+  const f = e.target.files[0]; e.target.value=''; if(!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if (!j || !Array.isArray(j.stores) || j.stores.some(s=>typeof s.name!=='string' || !Array.isArray(s.rows))) throw 0;
+    const cnt = j.stores.reduce((a,s)=>a+s.rows.length,0);
+    const inc = j.stores.map(s=>({name:cleanName(s.name), rows:s.rows.filter(r=>PLATS.includes(r.p) && /^\d{4}-\d{2}$/.test(r.ym))})).filter(s=>s.name);
+    if (MODE === 'hq' && stores.length) {
+      // 본사용: 점주 백업을 합치기 — 같은 매장·플랫폼·월은 백업 값으로 덮어쓰고, 없는 매장은 새로 추가
+      const names = inc.map(s=>s.name), newOnes = names.filter(n=>!stores.includes(n));
+      if (!confirm(`백업 파일을 합칠까요?\n매장: ${names.join(', ')}\n(새 매장 ${newOnes.length}개 추가 · 기존 매장은 같은 월 기록을 백업 값으로 덮어씀)`)) return;
+      inc.forEach(s=>{
+        const cur = storeObj(s.name);
+        if (!cur) { db.stores.push(s); return; }
+        s.rows.forEach(r=>{ const i = cur.rows.findIndex(x=>x.p===r.p && x.ym===r.ym); if (i>=0) cur.rows[i]=r; else cur.rows.push(r); });
+      });
+      saveDb(); syncStores(); fillStoreSel(); state.store = names[0]; render(); return;
+    }
+    if (stores.length && !confirm(`백업(매장 ${j.stores.length}개 · 기록 ${cnt}개)으로 지금 값을 모두 대체할까요?`)) return;
+    db = {stores: inc};
+    saveDb(); syncStores(); fillStoreSel(); state.store = stores[0]; render();
+  } catch(err) { alert('백업 파일을 읽지 못했습니다. 이 계산기에서 저장한 .json 파일인지 확인해 주세요.'); }
+};
+$('btnCsv').onclick = ()=>{
+  const head = ['매장','플랫폼','월','노출수','클릭수','주문수','주문금액','광고비','클릭률','전환율','객단가','클릭당광고비','주문당광고비','광고비비율','ROAS','비고'];
+  const lines=[head.join(',')];
+  stores.forEach(s=>PLATS.forEach(p=>rowsOf(s,p).forEach(r=>{ const c=calc(r);
+    const v=[s,p,ymLabel(r.ym),r.F,r.G,r.H,r.I,r.J,c.ctr,c.cvr,c.aov,c.cpc,c.cpo,c.adr,c.roas,(r.K||'').replace(/\s+/g,' ')].map(x=>x==null?'':(typeof x==='number'?(+x.toFixed(6)):`"${String(x).replace(/"/g,'""')}"`));
+    lines.push(v.join(',')); })));
+  const blob = new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='FC_전환율.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+$('foot').innerHTML = '지표 정의 — 클릭률 = 클릭 ÷ 노출 · 전환율 = 주문 ÷ 클릭 · 객단가 = 금액 ÷ 주문 · 주문당 광고비 = 광고비 ÷ 주문 · 광고비 비율 = 광고비 ÷ 금액 · ROAS = 금액 ÷ 광고비.<br>입력값은 이 PC·이 브라우저에만 저장됩니다. 브라우저 기록을 지우면 사라질 수 있으니 정기적으로 「백업 저장」을 해 두세요.';
+render();
+</script>
+</body>
+</html>
